@@ -1,0 +1,4 @@
+name: "hello"
+
+run-name: gradle assambeldebug
+machine: on: 
