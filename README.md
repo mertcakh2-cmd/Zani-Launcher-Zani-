@@ -1,46 +1,50 @@
 # Zani Launcher
 
-Zani Launcher is an early, open-source Android project for a Minecraft: Java Edition launcher. It aims to grow into a capable launcher with a polished Android interface and a native core. **This repository is currently a starter scaffold, not a playable Minecraft launcher.**
+Zani Launcher is an early Android launcher project for Minecraft: Java Edition. This iteration adds a genuine Rust static library and a C/JNI game-directory manager. The launcher creates an app-private `files/minecraft/` workspace with conventional folders for `versions`, `assets`, `libraries`, `runtime`, `logs`, `mods`, and `config`.
 
-## What is here
+## What works now
 
-- **Kotlin** Android app shell with a dark launcher dashboard and a selectable version label.
-- **C and C++** Android NDK library exposed to Kotlin through a small JNI bridge.
-- **Rust** platform-independent core crate with version-ID validation and unit tests.
-- **Makefile** convenience targets for native and Rust development.
+- Kotlin Android dashboard and version selector.
+- C JNI bridge to initialize and validate the on-device game directory.
+- Rust core crate with a C ABI for version-ID validation; Android CMake links it when its ABI archive has been built.
+- Rust and native C validation fallbacks, with unit tests and a Rust Android build script.
 
-The Play button deliberately reports that game execution is not implemented. The current version picker is UI-only; it does not download Minecraft. Authentication, asset/library downloads, Java runtime provisioning, mod loaders, and actual game launch are future work.
+The app does **not** yet download/install Minecraft, authenticate Microsoft accounts, provision a Java runtime, resolve version manifests/libraries, or start a game process. Creating folders is not equivalent to having Minecraft assets or JARs. The app does not bundle Mojang/Microsoft game files or Java; use only game files and accounts you are authorized to use. The PLAY control must not be treated as a working game launcher until the missing authenticated installation and Android runtime pipeline is implemented and tested.
 
-## Open in Android Studio
+## Build
 
-1. Install Android Studio with Android SDK Platform 35, Android SDK Build-Tools, NDK, and CMake 3.22.1.
-2. Open this repository as a Gradle project and allow Gradle sync to finish.
-3. Run the `app` configuration on an Android 8.0+ device or emulator (API 26 or newer).
+1. Open this repository in Android Studio with Android SDK Platform 35, NDK, and CMake 3.22.1 installed.
+2. For the C/JNI-only build, sync and run the `app` configuration. The app creates `files/minecraft/` on startup.
+3. To compile and link the Rust core for Android, install Rust and set `ANDROID_NDK_HOME` to your NDK, then run:
 
-The first Gradle sync may require an internet connection to fetch the Android Gradle Plugin and Kotlin plugin. A Gradle wrapper is not included yet; Android Studio can import the project, or you can add a wrapper with a locally installed Gradle distribution.
+   ```sh
+   ./scripts/build-rust-android.sh
+   ```
 
-## Native development
+   Install the Rust targets and rebuild the app whenever the Rust source changes. The script builds `arm64-v8a`, `armeabi-v7a`, and `x86_64` archives; CMake reports whether the Rust archive was found for the selected ABI.
+4. Run core tests with `cargo test --manifest-path native/rust/Cargo.toml`. Build the host C library with `make native-build`.
 
-```sh
-cargo test --manifest-path native/rust/Cargo.toml
-make native-build
+## Game directory layout
+
+The app's internal workspace is `Context.getFilesDir()/minecraft`. The native manager initializes these directories:
+
+```text
+minecraft/
+├── versions/       # version metadata and version JARs (not downloaded yet)
+├── assets/
+│   ├── indexes/
+│   └── objects/
+├── libraries/      # version-specific libraries (not downloaded yet)
+├── runtime/        # compatible Java runtime (not provisioned yet)
+├── logs/
+├── mods/
+└── config/
 ```
 
-The standalone `make native-build` target builds the C/C++ sources on a host when a C/C++ compiler and CMake are installed. For Android ABI builds, use the app's Gradle `externalNativeBuild` configuration so CMake receives the Android NDK toolchain.
+Android keeps this app-private directory sandboxed. No proprietary assets or JARs are checked into this repository.
 
-## Roadmap
+## Inspiration and licensing
 
-1. Add secure Microsoft account authentication and account/session storage.
-2. Implement version metadata resolution and resumable downloads with integrity checks.
-3. Provision a compatible Java runtime and map required native libraries per Android ABI.
-4. Implement sandboxed game directory management, JVM argument generation, and process output handling.
-5. Integrate and test the Rust core with Android using a documented JNI/UniFFI boundary.
-6. Add profile management, performance settings, accessibility, and device compatibility testing.
+The project takes high-level product inspiration from [Zalith Launcher 2](https://github.com/ZalithLauncher/ZalithLauncher2), an Android Minecraft: Java Edition launcher. No Zalith source code or assets are copied here. Zalith Launcher 2 is GPL-3.0; review its license before adapting or copying any of its implementation. This project remains governed by the repository's own [LICENSE](LICENSE).
 
-## Legal and safety notes
-
-This project is not affiliated with, endorsed by, or sponsored by Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB. Use an account and game files you are authorized to use; this project does not provide game files or bypass authentication/licensing. Do not enter account credentials into this starter app: account sign-in is not implemented.
-
-## License
-
-See [LICENSE](LICENSE).
+This project is not affiliated with Mojang or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
